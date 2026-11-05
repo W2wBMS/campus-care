@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Campus locations{% endblock %}
+{% block breadcrumb %}Campus locations{% endblock %}
+{% block content %}
+<section class="page-heading compact-heading">
+  <div><h1>Keep the campus map in step.</h1><p class="page-intro">Maintain the approved building and room list used when students and lecturers submit reports.</p></div>
+</section>
+{% if demo_mode %}<div class="demo-callout"><strong>Illustrative demo locations</strong><span>These examples are not a verified UPSA directory. Changes reset when the server restarts.</span></div>{% endif %}
+<section class="action-paper location-create">
+  <h2>Add a building and room</h2>
+  <form method="post" class="location-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="add">
+    <div><label class="field-label" for="building">Building or area</label><input class="text-input" id="building" name="building" maxlength="100" required placeholder="Building name"></div>
+    <div><label class="field-label" for="room">Room or place</label><input class="text-input" id="room" name="room" maxlength="100" required placeholder="Room number or area"></div>
+    <button class="button button-primary" type="submit">Add location</button>
+  </form>
+</section>
+<section class="work-section location-directory">
+  <div class="section-heading"><div><h2>Location directory</h2><p>Inactive locations stay attached to existing reports but are not offered for new reports.</p></div></div>
+  {% if locations %}
+  <div class="user-list">
+    {% for location in locations %}
+    <div class="user-row location-row">
+      <span class="location-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M19 10.1c0 5-7 10.4-7 10.4S5 15.1 5 10.1a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.2" stroke="currentColor" stroke-width="1.7"/></svg></span>
+      <div><strong>{{ location.building }} <span aria-hidden="true">·</span> {{ location.room }}</strong><small>{{ 'Available for new reports' if location.active else 'Inactive · historical reports retained' }}</small></div>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="toggle">
+        <input type="hidden" name="location_id" value="{{ location.id }}">
+        <button class="button button-secondary" type="submit">{{ 'Deactivate' if location.active else 'Activate' }}</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h3>No campus locations yet</h3><p>Add entries from the approved university building and room directory. Reports cannot be submitted until an active location is available.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

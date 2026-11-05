@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}System settings{% endblock %}
+{% block breadcrumb %}System settings{% endblock %}
+{% block content %}
+<section class="page-heading compact-heading">
+  <div><p class="date-line">FACILITIES ADMINISTRATION</p><h1>Set the campus defaults.</h1><p class="page-intro">Control what the campus can see and which reporting options are available.</p></div>
+</section>
+{% if demo_mode %}<div class="demo-callout"><strong>Demo preview</strong><span>Changes apply only while this server is running.</span></div>{% endif %}
+<form class="settings-form" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <section class="settings-group">
+    <div><h2>Campus issue board</h2><p>Let anyone view issue summaries, campus locations, urgency, and current status without signing in. Reporter details and report descriptions are not public.</p></div>
+    <label class="switch-control"><input type="checkbox" name="public_board_enabled" {% if settings.public_board_enabled %}checked{% endif %}><span class="switch-track" aria-hidden="true"></span><span class="switch-label">{{ 'On' if settings.public_board_enabled else 'Off' }}</span></label>
+  </section>
+  <section class="settings-group">
+    <div><h2>Anonymous reporting</h2><p>Allow students and lecturers to hide their name from the campus board. The facilities team can still see the reporter's account to follow up.</p></div>
+    <label class="switch-control"><input type="checkbox" name="anonymous_reports_enabled" {% if settings.anonymous_reports_enabled %}checked{% endif %}><span class="switch-track" aria-hidden="true"></span><span class="switch-label">{{ 'On' if settings.anonymous_reports_enabled else 'Off' }}</span></label>
+  </section>
+  <section class="settings-group settings-targets">
+    <div><h2>Response-time targets</h2><p>Set an approved target in hours for each urgency. Blank targets are not counted as overdue. These targets are service policy, not defaults.</p></div>
+    <div class="target-fields">
+      {% for urgency in ('Urgent', 'High', 'Normal', 'Low') %}
+      <label for="sla-{{ urgency | lower }}">{{ urgency }} <span>hours</span></label>
+      <input class="text-input" type="number" id="sla-{{ urgency | lower }}" name="sla_hours_{{ urgency | lower }}" min="1" max="87600" value="{{ settings['sla_hours_' ~ urgency | lower] }}" placeholder="Not set">
+      {% endfor %}
+    </div>
+  </section>
+  <div class="settings-actions"><span>Changes take effect immediately after saving.</span><button class="button button-primary" type="submit">Save settings</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create account' if mode == 'signup' else 'Sign in' }}{% endblock %}
+{% block content %}
+<section class="auth-wrap">
+  <div class="auth-card">
+    <span class="brand-mark auth-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M5 25V11l11-6 11 6v14M11 25v-8h10v8M3 25h26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <p class="date-line">UNIVERSITY OF PROFESSIONAL STUDIES</p>
+    <h1>{{ 'Join Campus Care.' if mode == 'signup' else 'Welcome back.' }}</h1>
+    <p class="page-intro">{{ 'Create a campus account to report an issue and follow its progress. You must verify your email before signing in.' if mode == 'signup' else 'Sign in to follow your campus reports and updates.' }}</p>
+    {% if mode == 'signup' and not email_enabled|default(false) %}
+    <p class="page-intro">Email verification is not configured yet. Contact the administrator to enable account creation.</p>
+    {% endif %}
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="auth-honeypot" aria-hidden="true">
+        <label for="website">Leave this field empty</label>
+        <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      {% if mode == 'signup' %}
+      <label class="field-label" for="name">Your name</label><input class="text-input" id="name" name="name" autocomplete="name" required>
+      <label class="field-label" for="role">Campus role</label><select class="text-input" id="role" name="role"><option value="student">Student</option><option value="lecturer">Lecturer</option></select>
+      {% endif %}
+      <label class="field-label" for="email">University email</label><input class="text-input" id="email" name="email" type="email" autocomplete="email" required>
+      <label class="field-label" for="password">Password <span>{% if mode == 'signup' %}At least 12 characters{% endif %}</span></label><input class="text-input" id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}" required>
+      <button class="button button-primary button-full" type="submit" {% if mode == 'signup' and not email_enabled|default(false) %}disabled{% endif %}>{{ 'Create account' if mode == 'signup' else 'Sign in' }}</button>
+    </form>
+    {% if mode == 'signup' %}
+    <p class="auth-switch">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
+    {% else %}
+    <p class="auth-switch"><a href="{{ url_for('request_password_reset') }}">Forgot your password?</a></p>
+    <p class="auth-switch"><a href="{{ url_for('resend_verification') }}">Resend email verification</a></p>
+    <p class="auth-switch">New to Campus Care? <a href="{{ url_for('signup') }}">Create an account</a></p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

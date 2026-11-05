@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Report an issue{% endblock %}
+{% block breadcrumb %}New report{% endblock %}
+{% block content %}
+<section class="page-heading compact-heading">
+  <div>
+    <p class="date-line">TELL US WHAT NEEDS FIXING</p>
+    <h1>Make the next fix easier.</h1>
+    <p class="page-intro">A clear location and a few details help the facilities team get to the right place, faster.</p>
+  </div>
+</section>
+
+<div class="form-layout">
+  <form class="paper-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-section-head"><span class="form-step">A</span><div><h2>What needs attention?</h2><p>Tell us what happened in a few words.</p></div></div>
+    <label class="field-label" for="title">Short title <span>Required</span></label>
+    <input class="text-input" id="title" name="title" maxlength="160" placeholder="e.g. Projector flickers during lectures" required value="{{ request.form.get('title', '') }}">
+
+    <div class="field-grid">
+      <div>
+        <label class="field-label" for="category">Issue type <span>Required</span></label>
+        <select class="text-input" id="category" name="category" required>
+          <option value="">Choose a category</option>
+          {% for category in categories %}<option value="{{ category }}" {% if request.form.get('category') == category %}selected{% endif %}>{{ category }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="urgency">How urgent is it? <span>Required</span></label>
+        <select class="text-input" id="urgency" name="urgency" required>
+          {% for urgency in ('Low', 'Normal', 'High', 'Urgent') %}<option {% if request.form.get('urgency', 'Normal') == urgency %}selected{% endif %}>{{ urgency }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label class="field-label" for="location_id">Building and room <span>Required</span></label>
+    <select class="text-input" id="location_id" name="location_id" required {% if not locations %}disabled{% endif %}>
+      <option value="">Choose a campus location</option>
+      {% for building, rooms in locations | groupby('building') %}
+      <optgroup label="{{ building }}">
+        {% for location in rooms %}<option value="{{ location.id }}" {% if selected_location_id == location.id %}selected{% endif %}>{{ location.room }}</option>{% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+    <p class="field-hint">{% if locations %}Choose from the campus location directory. If a location is missing, contact the facilities office.{% else %}The campus location directory has not been configured yet. Please contact the facilities office before submitting.{% endif %}</p>
+
+    <label class="field-label" for="description">Describe the issue <span>Required</span></label>
+    <textarea class="text-input text-area" id="description" name="description" rows="5" minlength="10" maxlength="3000" placeholder="What is broken, when did it start, and is anything else affected?" required>{{ request.form.get('description', '') }}</textarea>
+    <div class="field-foot"><span>Keep people safe. Don't include personal or sensitive information.</span><span data-char-count>0 / 3,000</span></div>
+
+    <div class="form-divider"></div>
+    <div class="form-section-head"><span class="form-step form-step-muted">B</span><div><h2>Add helpful context</h2><p>A photo can help the team understand what to bring.</p></div></div>
+    <label class="upload-zone" for="photo">
+      <input id="photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+      <span class="upload-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4.5 15.5v3A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="upload-copy"><strong data-file-name>Choose a photo <span>or drop it here</span></strong><small>JPG, PNG or WebP · up to 8 MB</small></span>
+      <span class="upload-browse">Browse files</span>
+    </label>
+
+    {% if allow_anonymous %}
+    <label class="privacy-choice">
+      <input type="checkbox" name="anonymous" {% if request.form.get('anonymous') %}checked{% endif %}>
+      <span class="custom-check" aria-hidden="true"></span>
+      <span><strong>Submit without showing my name on the campus board</strong><small>The facilities team can still contact you about the report. Your name and contact details are never shown publicly.</small></span>
+    </label>
+    {% endif %}
+
+    <div class="form-actions">
+      <a class="button button-quiet" href="{{ url_for('dashboard') }}">Cancel</a>
+      <button class="button button-primary" type="submit" {% if not locations %}disabled{% endif %}>Send report <span aria-hidden="true">→</span></button>
+    </div>
+  </form>
+
+  <aside class="form-aside">
+    <div class="aside-note">
+      <div class="aside-note-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s7-3.8 7-10.2V5l-7-2-7 2v5.8C5 17.2 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m9 11.5 2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Your report, handled with care.</h3>
+      <p>Your name and contact information stay private. The campus board only shows issue details and progress.</p>
+    </div>
+    <div class="aside-note aside-note-plain">
+      <span class="aside-overline">WHAT HAPPENS NEXT</span>
+      <ol class="next-steps">
+        <li><span>1</span><div><strong>We receive it</strong><small>Your report gets a reference number.</small></div></li>
+        <li><span>2</span><div><strong>It gets assigned</strong><small>A facilities team member picks it up.</small></div></li>
+        <li><span>3</span><div><strong>You see progress</strong><small>Updates appear in My reports.</small></div></li>
+      </ol>
+    </div>
+    <p class="urgent-help"><strong>Is someone in danger?</strong> Contact campus security directly. This form is not an emergency service.</p>
+  </aside>
+</div>
+{% endblock %}

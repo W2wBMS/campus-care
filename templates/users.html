@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}People & access{% endblock %}
+{% block breadcrumb %}People & access{% endblock %}
+{% block content %}
+<section class="page-heading compact-heading">
+  <div><p class="date-line">FACILITIES ADMINISTRATION</p><h1>People & access.</h1><p class="page-intro">Create campus accounts for maintenance teams and administrators.</p></div>
+</section>
+{% if demo_mode %}
+<div class="demo-callout"><strong>Demo preview</strong><span>Connect PostgreSQL to create and manage real campus accounts.</span></div>
+{% else %}
+<section class="action-paper user-create">
+  <h2>Create a staff account</h2>
+  <form method="post" class="user-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label class="field-label" for="name">Full name</label><input class="text-input" name="name" id="name" required maxlength="120"></div>
+    <div><label class="field-label" for="email">University email</label><input class="text-input" type="email" name="email" id="email" required maxlength="190"></div>
+    <div><label class="field-label" for="role">Role</label><select class="text-input" name="role" id="role">{% for role, label in roles.items() %}<option value="{{ role }}">{{ label }}</option>{% endfor %}</select></div>
+    {% if not oidc_enabled and smtp_enabled %}<div><label class="field-label" for="password">Temporary password</label><input class="text-input" type="password" name="password" id="password" required minlength="12" autocomplete="new-password"></div>{% elif oidc_enabled %}<p class="field-hint">This account can sign in only after its verified university email is provisioned here.</p>{% else %}<p class="field-hint">Configure SMTP email delivery before creating password accounts.</p>{% endif %}
+    <button class="button button-primary" type="submit" {% if not oidc_enabled and not smtp_enabled %}disabled{% endif %}>Create account</button>
+  </form>
+</section>
+{% endif %}
+<section class="work-section user-list-section">
+  <div class="section-heading"><div><h2>Campus accounts</h2><p>Role access determines which maintenance workflows are available.</p></div></div>
+  <div class="user-list">
+    {% for person in users %}<div class="user-row"><span class="avatar">{{ person.name[:1] | upper }}</span><div><strong>{{ person.name }}</strong><small>{{ person.email if person.email is defined else 'Demo account' }}</small></div><span class="role-pill">{{ roles[person.role] }}</span></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

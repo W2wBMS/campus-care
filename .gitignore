@@ -1,0 +1,12 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+uploads/
+prod-ca-2021.crt
+.agents/
+.impeccable/
+skills-lock.json
+package-lock.json

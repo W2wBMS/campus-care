@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard') }}">Reports</a><span class="breadcrumb-slash">/</span>{{ report.reference_code }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('dashboard') }}">← Back to {{ 'work queue' if g.user and g.user.role == 'maintenance' else 'reports' }}</a>
+<section class="detail-heading">
+  <div>
+    <div class="report-topline"><span class="category-label">{{ report.category }}</span><span class="reference-code">{{ report.reference_code }}</span></div>
+    <h1>{{ report.title }}</h1>
+    <p class="detail-location"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 10.1c0 5-7 10.4-7 10.4S5 15.1 5 10.1a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>{{ report.location }} <span>·</span> Reported {{ report.created_at.strftime("%B %d, %Y") }}</p>
+  </div>
+  <span class="status status-{{ status_class(report.status) }}"><span></span>{{ report.status }}</span>
+</section>
+
+<div class="detail-grid">
+  <section class="detail-main">
+    <div class="detail-paper">
+      {% if not public_view %}
+      <div class="detail-block">
+        <span class="detail-label">WHAT'S HAPPENING</span>
+        <p class="detail-description">{{ report.description }}</p>
+      </div>
+      {% endif %}
+      {% if report.photo_name and not public_view %}
+      <div class="detail-block"><span class="detail-label">ATTACHED PHOTO</span><img class="report-photo" src="{{ url_for('uploaded_file', filename=report.photo_name) }}" alt="Photo attached to this maintenance report"></div>
+      {% endif %}
+      {% if not public_view %}
+      {% if g.user.role in ('maintenance', 'admin') %}
+      <div class="detail-block">
+        <span class="detail-label">MAINTENANCE WORK LOG</span>
+        {% if work_logs %}
+        <ol class="work-log-list">
+          {% for entry in work_logs %}
+          <li>
+            <div class="timeline-top"><strong>{{ entry.actor_name }} · {{ (entry.labor_minutes // 60) }}h {{ (entry.labor_minutes % 60) }}m</strong><time>{{ entry.created_at.strftime("%b %d · %I:%M %p") }}</time></div>
+            <p>{{ entry.note }}</p>
+            {% if entry.parts_used %}<small>Parts: {{ entry.parts_used }}</small>{% endif %}
+            {% if entry.follow_up_at %}<small>Follow-up: {{ entry.follow_up_at.strftime("%b %d, %Y") if entry.follow_up_at.strftime is defined else entry.follow_up_at }}</small>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}<p class="field-hint">No work visits have been logged yet.</p>{% endif %}
+      </div>
+      {% endif %}
+      <div class="detail-block">
+        <span class="detail-label">PROGRESS SO FAR</span>
+        <ol class="timeline">
+          {% for update in report.updates %}
+          <li class="timeline-item {% if loop.first %}timeline-first{% endif %}">
+            <span class="timeline-marker" aria-hidden="true"></span>
+            <div class="timeline-content"><div class="timeline-top"><strong>{{ update.status }}</strong><time>{{ update.created_at.strftime("%b %d · %I:%M %p") }}</time></div><p>{{ update.note }}</p></div>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <aside class="detail-aside">
+    <div class="detail-side-paper">
+      <span class="detail-label">REPORT DETAILS</span>
+      <dl class="detail-facts">
+        <div><dt>Priority</dt><dd><span class="urgency urgency-{{ report.urgency | lower }}">{{ report.urgency }}</span></dd></div>
+        {% if not public_view %}<div><dt>Assigned to</dt><dd>{{ report.assignee_name or 'Waiting for assignment' }}</dd></div>{% endif %}
+        {% if g.user and g.user.role in ('maintenance', 'admin') and not public_view %}<div><dt>Reported by</dt><dd>{{ 'Anonymous report' if report.is_anonymous else report.reporter_name }}</dd></div>{% endif %}
+        <div><dt>Reference</dt><dd>{{ report.reference_code }}</dd></div>
+      </dl>
+    </div>
+
+    {% if g.user and g.user.role == 'admin' and not public_view %}
+    <div class="action-paper">
+      <h2>Assign the work</h2>
+      {% if demo_mode %}
+      <form method="post" action="{{ url_for('assign_report', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="assignee">Maintenance team</label>
+        <select class="text-input" name="assignee_id" id="assignee"><option value="">Unassigned</option><option value="3" {% if report.assigned_to == 3 %}selected{% endif %}>Kofi Boateng · Maintenance</option></select>
+        <button class="button button-secondary button-full" type="submit">Save assignment</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('assign_report', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="assignee">Maintenance team</label>
+        <select class="text-input" name="assignee_id" id="assignee"><option value="">Unassigned</option>{% for person in staff %}<option value="{{ person.id }}" {% if report.assigned_to == person.id %}selected{% endif %}>{{ person.name }}</option>{% endfor %}</select>
+        <button class="button button-secondary button-full" type="submit">Save assignment</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if g.user and g.user.role in ('maintenance', 'admin') and not public_view %}
+    <div class="action-paper">
+      <h2>Log a maintenance visit</h2>
+      <p class="field-hint">Work logs are visible to authorized facilities staff, not on the public board.</p>
+      <form method="post" action="{{ url_for('add_work_log', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="labor-minutes">Labor time <span>Minutes · 1 to 1,440</span></label>
+        <input class="text-input" type="number" id="labor-minutes" name="labor_minutes" min="1" max="1440" required>
+        <label class="field-label" for="parts-used">Parts or materials <span>Optional</span></label>
+        <input class="text-input" id="parts-used" name="parts_used" maxlength="500" placeholder="Part name, quantity, or none">
+        <label class="field-label" for="work-note">Work completed <span>Required</span></label>
+        <textarea class="text-input text-area" name="note" id="work-note" rows="3" maxlength="500" required></textarea>
+        <label class="field-label" for="follow-up">Follow-up date <span>Optional</span></label>
+        <input class="text-input" type="date" id="follow-up" name="follow_up_at">
+        <button class="button button-secondary button-full" type="submit">Save work log</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if g.user and g.user.role in ('maintenance', 'admin') and not public_view %}
+    <div class="action-paper">
+      <h2>Add a progress note</h2>
+      <form method="post" action="{{ url_for('update_report', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="status">Status</label>
+        <select class="text-input" name="status" id="status">{% for status in statuses %}<option {% if status == report.status %}selected{% endif %}>{{ status }}</option>{% endfor %}</select>
+        <label class="field-label" for="note">What changed?</label>
+        <textarea class="text-input text-area" name="note" id="note" rows="3" maxlength="500" required placeholder="Add a short, useful update"></textarea>
+        <button class="button button-primary button-full" type="submit">Post update</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if g.user and not public_view and report.status == 'Resolved' and g.user.role in ('student', 'lecturer') and not feedback %}
+    <div class="action-paper feedback-paper">
+      <h2>Did we get it right?</h2><p>Let us know how the fix went.</p>
+      <form method="post" action="{{ url_for('add_feedback', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="rating">Your rating</label>
+        <select class="text-input" id="rating" name="rating" required><option value="">Choose a rating</option><option value="5">5 — Great</option><option value="4">4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Not quite</option><option value="1">1 — Needs work</option></select>
+        <label class="field-label" for="feedback-note">Anything else? <span>Optional</span></label>
+        <textarea class="text-input text-area" id="feedback-note" name="note" rows="3" maxlength="500"></textarea>
+        <button class="button button-secondary button-full" type="submit">Send feedback</button>
+      </form>
+    </div>
+    {% elif not public_view and feedback %}
+    <div class="feedback-confirm"><strong>Feedback received</strong><span>Thank you for helping improve campus maintenance.</span></div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

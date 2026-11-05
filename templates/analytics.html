@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Service analytics{% endblock %}
+{% block breadcrumb %}Service analytics{% endblock %}
+{% block content %}
+<section class="page-heading compact-heading">
+  <div><h1>What the service record shows.</h1><p class="page-intro">Resolution, recurring issues, overdue work, and reporter feedback for the selected period.</p></div>
+  <form class="analytics-range" method="get">
+    <label for="analytics-start">From</label><input class="text-input" type="date" id="analytics-start" name="start" value="{{ start_date }}" required>
+    <label for="analytics-end">To</label><input class="text-input" type="date" id="analytics-end" name="end" value="{{ end_date }}" required>
+    <button class="button button-secondary" type="submit">Update range</button>
+  </form>
+</section>
+{% if demo_mode %}<div class="demo-callout"><strong>Illustrative demo analytics</strong><span>Sample reports and figures are fictional, reset on restart, and are not live UPSA service data.</span></div>{% endif %}
+<section class="analytics-summary" aria-label="Service metrics">
+  <dl>
+    <div><dt>Reports submitted</dt><dd>{{ metrics.total }}</dd></div>
+    <div><dt>Resolved reports</dt><dd>{{ metrics.resolved }}</dd></div>
+    <div><dt>Average time to resolution</dt><dd>{% if metrics.average_resolution_hours is not none %}{{ "%.1f" | format(metrics.average_resolution_hours) }} hours{% else %}Not enough resolved reports{% endif %}</dd></div>
+    <div><dt>Reporter satisfaction</dt><dd>{% if metrics.feedback_average is not none %}{{ "%.1f" | format(metrics.feedback_average) }} / 5 <small>({{ metrics.feedback_count }} ratings)</small>{% else %}No ratings in this period{% endif %}</dd></div>
+  </dl>
+</section>
+<div class="analytics-columns">
+  <section class="analytics-section">
+    <h2>Recurring issues</h2>
+    <p>Categories and locations with more than one report in this period.</p>
+    <div class="analytics-pair">
+      <div><h3>By issue type</h3>
+        {% if metrics.recurring_categories %}<ul class="analytics-list">{% for item in metrics.recurring_categories %}<li><span>{{ item.label }}</span><strong>{{ item.count }}</strong></li>{% endfor %}</ul>{% else %}<p class="field-hint">No repeated categories in this period.</p>{% endif %}
+      </div>
+      <div><h3>By location</h3>
+        {% if metrics.recurring_locations %}<ul class="analytics-list">{% for item in metrics.recurring_locations %}<li><span>{{ item.label }}</span><strong>{{ item.count }}</strong></li>{% endfor %}</ul>{% else %}<p class="field-hint">No repeated locations in this period.</p>{% endif %}
+      </div>
+    </div>
+  </section>
+  <section class="analytics-section">
+    <h2>Work needing attention</h2>
+    {% if metrics.sla_configured %}
+      <p>Open reports past the response target configured for their urgency.</p>
+      {% if metrics.overdue %}<ul class="analytics-list overdue-list">{% for item in metrics.overdue %}<li><a href="{{ url_for('report_detail', report_id=item.id) }}">{{ item.reference_code if item.reference_code is defined else item.id }} · {{ item.category }}</a><strong>{{ "%.1f" | format(item.age_hours) }}h / {{ item.target_hours }}h</strong></li>{% endfor %}</ul>
+      {% else %}<p class="field-hint">No reports are past their configured response target in this period.</p>{% endif %}
+    {% else %}
+      <p class="policy-note">Overdue counts are not shown because no urgency response targets have been configured. Confirm and enter approved targets in <a href="{{ url_for('manage_settings') }}">System settings</a>.</p>
+    {% endif %}
+  </section>
+</div>
+<p class="analytics-footnote">The date range selects reports by submission date. Resolution time uses the first recorded transition to Resolved; feedback average reflects ratings attached to those reports.</p>
+{% endblock %}

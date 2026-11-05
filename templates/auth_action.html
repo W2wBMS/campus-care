@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if mode == 'verify_email' %}Verify email{% elif mode == 'password_reset_request' %}Reset password{% elif mode == 'password_reset' %}Choose a new password{% else %}Resend verification{% endif %}
+{% endblock %}
+{% block content %}
+<section class="auth-wrap">
+  <div class="auth-card">
+    <span class="brand-mark auth-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M5 25V11l11-6 11 6v14M11 25v-8h10v8M3 25h26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <p class="date-line">UNIVERSITY OF PROFESSIONAL STUDIES</p>
+    {% if mode == 'verify_email' %}
+    <h1>Verify your email.</h1>
+    <p class="page-intro">Confirm this email address to activate your Campus Care account.</p>
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button class="button button-primary button-full" type="submit">Verify email</button>
+    </form>
+    {% elif mode == 'password_reset_request' or mode == 'resend_verification' %}
+    <h1>{{ 'Reset your password.' if mode == 'password_reset_request' else 'Verify your email.' }}</h1>
+    <p class="page-intro">{{ 'Enter your verified account email and we will send a password reset link.' if mode == 'password_reset_request' else 'Enter your account email and we will send a new verification link if your account needs one.' }}</p>
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="auth-honeypot" aria-hidden="true">
+        <label for="website">Leave this field empty</label>
+        <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <label class="field-label" for="email">University email</label>
+      <input class="text-input" id="email" name="email" type="email" autocomplete="email" required maxlength="190">
+      <button class="button button-primary button-full" type="submit">{{ 'Send reset link' if mode == 'password_reset_request' else 'Send verification link' }}</button>
+    </form>
+    {% else %}
+    <h1>Choose a new password.</h1>
+    <p class="page-intro">Choose a password with at least 12 characters. This link can be used once.</p>
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="token" value="{{ token }}">
+      <label class="field-label" for="password">New password</label>
+      <input class="text-input" id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required>
+      <label class="field-label" for="password_confirmation">Confirm new password</label>
+      <input class="text-input" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required>
+      <button class="button button-primary button-full" type="submit">Update password</button>
+    </form>
+    {% endif %}
+    <p class="auth-switch"><a href="{{ url_for('login') }}">Return to sign in</a></p>
+  </div>
+</section>
+{% endblock %}

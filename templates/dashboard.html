@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% set is_board = view == 'board' %}
+{% block title %}{{ 'Campus board' if is_board else 'Overview' }}{% endblock %}
+{% block breadcrumb %}{{ 'Campus board' if is_board else 'Overview' }}{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <p class="date-line">{{ "TODAY · " ~ now().strftime("%A, %B %d") }}</p>
+    <h1>{% if is_board %}Campus, in the clear.{% elif g.user.role == 'maintenance' %}The work in front of you.{% elif g.user.role == 'admin' %}Facilities at a glance.{% else %}A campus that works, one fix at a time.{% endif %}</h1>
+    <p class="page-intro">{% if is_board %}See what's been reported around campus and where each issue stands. Reporter details stay private.{% elif g.user.role == 'maintenance' %}Pick up an assigned job, add a progress note, and keep the campus moving.{% elif g.user.role == 'admin' %}Review campus reports and connect each issue to the right maintenance team.{% else %}Good morning, {{ g.user.name | first_name }}. Your reports and the people working on them, all in one place.{% endif %}</p>
+  </div>
+  {% if g.user and g.user.role in ('student', 'lecturer') and not is_board %}
+  <a class="button button-primary" href="{{ url_for('create_report') }}">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    Report an issue
+  </a>
+  {% endif %}
+</section>
+
+{% if not is_board and g.user.role != 'maintenance' %}
+<section class="notice-strip" aria-label="Campus reporting reminder">
+  <span class="notice-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 21 20H3l9-16.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9v4.5m0 3h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </span>
+  <p><strong>Something needs attention?</strong> Add the exact building and room so the right person can find it.</p>
+  <a href="{{ url_for('create_report') }}">Start a report <span aria-hidden="true">→</span></a>
+</section>
+{% endif %}
+
+<section class="summary-row" aria-label="Report summary">
+  <div class="summary-item"><span class="summary-label">{{ 'Open on this board' if is_board else 'Open reports' }}</span><strong>{{ counts.open }}</strong><span class="summary-caption">Needs attention</span></div>
+  <div class="summary-item"><span class="summary-label">In progress</span><strong>{{ counts.progress }}</strong><span class="summary-caption">With maintenance</span></div>
+  <div class="summary-item"><span class="summary-label">Resolved</span><strong>{{ counts.resolved }}</strong><span class="summary-caption">Completed</span></div>
+  <div class="summary-aside"><span class="summary-dot"></span><span>Updates are added by the facilities team</span></div>
+</section>
+
+<section class="work-section">
+  <div class="section-heading">
+    <div><h2>{% if is_board %}The campus board{% elif g.user.role == 'maintenance' %}Assigned to your team{% elif g.user.role == 'admin' %}All campus reports{% else %}Your reports{% endif %}</h2><p>{% if is_board %}A shared view of campus issues — never the reporter's contact details.{% elif g.user.role in ('student', 'lecturer') %}Your latest updates, in the order they came in.{% else %}Select an issue to see its complete history and next step.{% endif %}</p></div>
+    <div class="list-tools">
+      <label class="search-field">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <input type="search" placeholder="Find an issue" aria-label="Find an issue" data-report-search>
+      </label>
+      <select class="filter-select" aria-label="Filter by status" data-status-filter>
+        <option value="">All statuses</option>
+        {% for status in statuses %}<option value="{{ status }}">{{ status }}</option>{% endfor %}
+      </select>
+      <select class="filter-select" aria-label="Filter by issue type or location" data-place-filter>
+        <option value="">All types & locations</option>
+        <optgroup label="Issue type">
+          {% for category in categories %}<option value="category:{{ category }}">{{ category }}</option>{% endfor %}
+        </optgroup>
+        <optgroup label="Location">
+          {% for location in reports | map(attribute='location') | unique | sort %}<option value="location:{{ location }}">{{ location }}</option>{% endfor %}
+        </optgroup>
+      </select>
+      <button class="density-toggle" type="button" aria-pressed="false" data-density-toggle>Compact list</button>
+    </div>
+  </div>
+
+  {% if reports %}
+  <div class="report-list" data-report-list>
+    {% for report in reports %}
+    <article class="report-row" data-report-row data-status="{{ report.status }}" data-category="{{ report.category }}" data-location="{{ report.location }}" data-search="{{ (report.title ~ ' ' ~ report.location ~ ' ' ~ report.category ~ ' ' ~ report.reference_code) | lower }}">
+      <div class="report-date"><span>{{ report.created_at.strftime("%b") }}</span><strong>{{ report.created_at.strftime("%d") }}</strong><small>{{ report.created_at.strftime("%Y") }}</small></div>
+      <div class="report-main">
+        <div class="report-topline"><span class="category-label">{{ report.category }}</span><span class="reference-code">{{ report.reference_code }}</span></div>
+        <a class="report-title" href="{{ url_for('report_detail', report_id=report.id, public='1' if is_board else None) }}">{{ report.title }}</a>
+        <div class="report-meta">
+          <span class="meta-location"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 10.1c0 5-7 10.4-7 10.4S5 15.1 5 10.1a7 7 0 1 1 14 0Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>{{ report.location }}</span>
+          {% if report.urgency in ('High', 'Urgent') %}<span class="urgency urgency-{{ report.urgency | lower }}">{{ report.urgency }} priority</span>{% endif %}
+        </div>
+        {% if not is_board and report.latest_update_note %}<div class="progress-strip"><time>{{ report.updated_at.strftime("%b %d") }}</time><span>{{ report.latest_update_note }}</span></div>{% endif %}
+      </div>
+      <div class="report-state">
+        <span class="status status-{{ status_class(report.status) }}"><span></span>{{ report.status }}</span>
+        {% if not is_board and report.assignee_name and g.user.role != 'student' %}<small>With {{ report.assignee_name }}</small>{% elif report.updated_at %}<small>Updated {{ report.updated_at.strftime("%b %d") }}</small>{% endif %}
+      </div>
+      <a class="row-arrow" href="{{ url_for('report_detail', report_id=report.id, public='1' if is_board else None) }}" aria-label="View {{ report.title }}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </article>
+    {% endfor %}
+    <p class="filter-empty" data-filter-empty hidden>No reports match those filters. Try another search or status.</p>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M11 9h26v30H11zM17 17h14M17 23h14M17 29h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <h3>{% if is_board %}No reports on the board yet{% else %}A clear queue is a good thing{% endif %}</h3>
+    <p>{% if is_board %}When a campus issue is reported, it will appear here with its location and progress.{% elif g.user.role in ('student', 'lecturer') %}When you spot something that needs fixing, tell us where it is.{% else %}New reports will appear here as soon as they're submitted.{% endif %}</p>
+    {% if g.user.role in ('student', 'lecturer') and not is_board %}<a class="button button-secondary" href="{{ url_for('create_report') }}">Create your first report</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{% if demo_mode %}
+<p class="sample-note"><span class="sample-note-dot"></span>Illustrative sample reports — not live university data.</p>
+{% endif %}
+{% endblock %}
